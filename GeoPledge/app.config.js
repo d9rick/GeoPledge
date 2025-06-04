@@ -43,7 +43,8 @@ export default {
                     resizeMode: "contain",
                     backgroundColor: "#ffffff"
                 }
-            ]
+            ],
+            "expo-secure-store"
         ],
         experiments: {
             typedRoutes: true

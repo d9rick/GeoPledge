@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useContext } from 'react';
 import {
     View,
     StyleSheet,
@@ -8,14 +8,17 @@ import {
     TextInput,
     TouchableOpacity,
     Platform,
-} from 'react-native'
-import MapView, { Region } from 'react-native-maps'
-import * as Location from 'expo-location'
-import { Stack } from 'expo-router'
-import { Picker } from '@react-native-picker/picker'
-import DateTimePicker from '@react-native-community/datetimepicker'
+} from 'react-native';
+import MapView, { Region } from 'react-native-maps';
+import * as Location from 'expo-location';
+import { Stack } from 'expo-router';
+import { Picker } from '@react-native-picker/picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { AuthContext } from '@/contexts/AuthContext';
 
 export default function MapScreen() {
+    const { signOut } = useContext(AuthContext);
+
     const [loading, setLoading] = useState(true)
     const [region, setRegion] = useState<Region>({
         latitude: 37.78825,
@@ -30,7 +33,7 @@ export default function MapScreen() {
     const [date, setDate] = useState<Date>(new Date())
     const [showPicker, setShowPicker] = useState(false)
 
-    // 1. get user location
+    // Get user location
     useEffect(() => {
         (async () => {
             const { status } = await Location.requestForegroundPermissionsAsync()
@@ -72,6 +75,14 @@ export default function MapScreen() {
     return (
         <View style={styles.container}>
             <Stack.Screen options={{ title: 'Pick a Location' }} />
+
+            {/* Log out button */}
+            <TouchableOpacity
+                style={{ position: 'absolute', top: Platform.OS === 'ios' ? 60 : 30, right: 16, zIndex: 20 }}
+                onPress={signOut}
+            >
+                <Text style={{ color: 'red', fontWeight: '600' }}>Log Out</Text>
+            </TouchableOpacity>
 
             <MapView
                 style={styles.map}
