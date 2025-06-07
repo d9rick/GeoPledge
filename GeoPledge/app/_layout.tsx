@@ -7,9 +7,14 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 function AppStack() {
     const { userToken, isLoading } = useAuth();
 
-    console.log('AppStack render - isLoading:', isLoading, 'userToken:', userToken ? 'exists' : 'null');
+    console.log(
+        'AppStack render - isLoading:',
+        isLoading,
+        'userToken:',
+        userToken ? 'exists' : 'null'
+    );
 
-    // Show loading screen while checking authentication
+    // 1) show a loading spinner while we're checking AsyncStorage for token
     if (isLoading) {
         return (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -18,28 +23,26 @@ function AppStack() {
         );
     }
 
-    // Show different stacks based on authentication state
+    // 2) once isLoading===false, render the appropriate Stack.Screens
     return (
         <Stack screenOptions={{ headerShown: false }}>
+            {/* Always include index */}
             <Stack.Screen name="index" />
-            {!userToken ? (
-                // Not authenticated - show auth screens
-                <>
-                    <Stack.Screen name="login" />
-                    <Stack.Screen name="signup" />
-                </>
-            ) : (
-                // Authenticated - show app screens
-                <>
-                    <Stack.Screen
-                        name="map"
-                        options={{
-                            headerShown: true,
-                            title: 'Pick a Location'
-                        }}
-                    />
-                </>
+
+            {/* Mount all screens */}
+            <Stack.Screen name="login" />
+            <Stack.Screen name="signup" />
+
+            {(
+                <Stack.Screen
+                    name="map"
+                    options={{
+                        headerShown: true,
+                        title: 'Pick a Location',
+                    }}
+                />
             )}
+
         </Stack>
     );
 }

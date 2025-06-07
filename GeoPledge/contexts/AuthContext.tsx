@@ -142,11 +142,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const signOut = async () => {
+        if (!userToken) {
+            console.warn('No user token found, skipping logout');
+            return setUserToken(null);
+        }
         try {
-            // Only call logout endpoint if we have a token
-            if (userToken) {
-                await api.post('/auth/logout');
-            }
+            await api.post('/auth/logout');
         } catch (err) {
             console.warn('Logout request failed', err);
             // Continue with local logout even if server request fails

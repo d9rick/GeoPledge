@@ -11,14 +11,19 @@ import {
 } from 'react-native';
 import MapView, { Region } from 'react-native-maps';
 import * as Location from 'expo-location';
-import { Stack } from 'expo-router';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { AuthContext } from '@/contexts/AuthContext';
+import { useRouter } from "expo-router";
+
+export const screenOptions = {
+    headerShown: true,
+    title: 'Pick a Location',
+};
 
 export default function MapScreen() {
     const { signOut } = useContext(AuthContext);
-
+    const router = useRouter();
     const [loading, setLoading] = useState(true)
     const [region, setRegion] = useState<Region>({
         latitude: 37.78825,
@@ -74,12 +79,14 @@ export default function MapScreen() {
 
     return (
         <View style={styles.container}>
-            <Stack.Screen options={{ title: 'Pick a Location' }} />
 
             {/* Log out button */}
             <TouchableOpacity
                 style={{ position: 'absolute', top: Platform.OS === 'ios' ? 60 : 30, right: 16, zIndex: 20 }}
-                onPress={signOut}
+                onPress={async () => {
+                    await signOut();
+                    router.replace('/login'); // Redirect to login after signing out
+                }}
             >
                 <Text style={{ color: 'red', fontWeight: '600' }}>Log Out</Text>
             </TouchableOpacity>
@@ -178,6 +185,7 @@ export default function MapScreen() {
                 </View>
             </Modal>
         </View>
+
     )
 }
 

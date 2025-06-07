@@ -1,5 +1,5 @@
 // /app/login.tsx
-import React, { useState, useContext } from 'react';
+import React, {useState, useContext, useEffect} from 'react';
 import {
     View,
     Text,
@@ -10,15 +10,27 @@ import {
     Platform,
     ActivityIndicator,
 } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
-import { AuthContext } from '../contexts/AuthContext';
+import { useRouter } from 'expo-router';
+import { AuthContext, useAuth } from '@/contexts/AuthContext';
+
+export const screenOptions = {
+    headerShown: false,
+};
 
 export default function LoginScreen() {
     const router = useRouter();
     const { signIn } = useContext(AuthContext);
+    const { userToken } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+        // Redirect to map if user is already logged in
+        if (userToken) {
+            router.replace('/map');
+        }
+    })
 
     const handleLogin = async () => {
         if (!email || !password) {
@@ -29,8 +41,8 @@ export default function LoginScreen() {
         setIsSubmitting(true);
         try {
             await signIn(email.trim(), password);
-            // Navigation will be handled automatically by _layout.tsx
-        } catch (error) {
+            router.replace('/map');
+        } catch {
             // Error is already handled in signIn
         } finally {
             setIsSubmitting(false);
@@ -42,8 +54,6 @@ export default function LoginScreen() {
             style={styles.container}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-            <Stack.Screen options={{ headerShown: false }} />
-
             <View style={styles.form}>
                 <Text style={styles.title}>Log In</Text>
 
@@ -61,7 +71,7 @@ export default function LoginScreen() {
                 <Text style={styles.label}>Password</Text>
                 <TextInput
                     style={styles.input}
-                    placeholder="••••••••"
+                    placeholder="password"
                     secureTextEntry
                     value={password}
                     onChangeText={setPassword}
