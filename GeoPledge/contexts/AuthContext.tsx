@@ -57,7 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const signIn = async (email: string, password: string) => {
         try {
-            const res = await api.post('/auth/login', { email, password });
+            const res = await api.post('/api/auth/login', { email, password });
 
             // Debug logging to see what the server returns
             console.log('Login response:', res.data);
@@ -107,7 +107,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         setIsSigningUp(true);
         try {
-            const res = await api.post('/auth/signup', { email, password });
+            const res = await api.post('/api/auth/signup', { email, password });
 
             // Debug logging
             console.log('Signup response:', res.data);
@@ -147,7 +147,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             return setUserToken(null);
         }
         try {
-            await api.post('/auth/logout');
+            await api.post('/api/auth/logout');
         } catch (err) {
             console.warn('Logout request failed', err);
             // Continue with local logout even if server request fails

@@ -32,16 +32,20 @@ function AppStack() {
             {/* Mount all screens */}
             <Stack.Screen name="login" />
             <Stack.Screen name="signup" />
-
-            {(
-                <Stack.Screen
-                    name="map"
-                    options={{
-                        headerShown: true,
-                        title: 'Pick a Location',
-                    }}
-                />
-            )}
+            <Stack.Screen
+                name="pledges"
+                options={{
+                    headerShown: true,
+                    title: 'Your Pledges',
+                }}
+            />
+            <Stack.Screen
+                name="map"
+                options={{
+                    headerShown: true,
+                    title: 'Pick a Location',
+                }}
+            />
 
         </Stack>
     );

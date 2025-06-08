@@ -1,4 +1,4 @@
-package com.geopledge.controllers;
+package com.geopledge.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

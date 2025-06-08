@@ -1,5 +1,6 @@
 package com.geopledge.auth.config;
 
+import com.geopledge.auth.security.JwtAuthTokenFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -8,6 +9,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -20,6 +22,11 @@ import java.util.Arrays;
 @Configuration
 @EnableWebSecurity
 public class WebSecurityConfig {
+
+    private final JwtAuthTokenFilter jwtAuthTokenFilter;
+    public WebSecurityConfig(JwtAuthTokenFilter jwtAuthTokenFilter) {
+        this.jwtAuthTokenFilter = jwtAuthTokenFilter;
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -41,10 +48,17 @@ public class WebSecurityConfig {
                 // Configure authorization
                 .authorizeHttpRequests(authz -> authz
                         // Allow public access to auth endpoints
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(
+                                "/api/auth/**",
+                                "/error",
+                                "/error/**"
+                        ).permitAll()
                         // All other endpoints require authentication
                         .anyRequest().authenticated()
-                );
+                )
+
+                // insert our own JWT filter
+                .addFilterBefore(jwtAuthTokenFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

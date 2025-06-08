@@ -28,9 +28,9 @@ export default function SignUpScreen() {
     useEffect(() => {
         // Redirect to map if user is already logged in
         if (userToken) {
-            router.replace('/map');
+            router.replace('/pledges');
         }
-    })
+    }, [userToken])
 
     const handleSignUp = async () => {
         if (!email || !password) {

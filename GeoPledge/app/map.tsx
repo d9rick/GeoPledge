@@ -8,13 +8,16 @@ import {
     TextInput,
     TouchableOpacity,
     Platform,
+    TouchableWithoutFeedback, Keyboard, KeyboardAvoidingView, Animated,
 } from 'react-native';
 import MapView, { Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { AuthContext } from '@/contexts/AuthContext';
+import {AuthContext, useAuth} from '@/contexts/AuthContext';
 import { useRouter } from "expo-router";
+import api from "@/utils/api";
+import ScrollView = Animated.ScrollView;
 
 export const screenOptions = {
     headerShown: true,
@@ -23,6 +26,7 @@ export const screenOptions = {
 
 export default function MapScreen() {
     const { signOut } = useContext(AuthContext);
+    const { userToken } = useAuth();
     const router = useRouter();
     const [loading, setLoading] = useState(true)
     const [region, setRegion] = useState<Region>({
@@ -33,10 +37,33 @@ export default function MapScreen() {
     })
 
     const [modalVisible, setModalVisible] = useState(false)
-    const [selectedCharity, setSelectedCharity] = useState<string>('Charity A')
+    const [charities, setCharities] = useState<{ id: string, name: string }[]>([]);
+    const [selectedCharity, setSelectedCharity] = useState<string>('');
     const [donationAmount, setDonationAmount] = useState<string>('')
     const [date, setDate] = useState<Date>(new Date())
     const [showPicker, setShowPicker] = useState(false)
+    const [pledgeName, setPledgeName] = useState('');
+
+    // Redirect to login if user not logged in
+    useEffect(() => {
+        if (!userToken) {
+            router.replace('/login');
+        }
+    });
+
+    // load charities on mount
+    useEffect(() => {
+        api.get('/api/charities', {
+            headers: { Authorization: `Bearer ${userToken}` }
+        })
+            .then(res => {
+                setCharities(res.data);
+                if (res.data.length) {
+                    setSelectedCharity(res.data[0].id);
+                }
+            })
+            .catch(console.error);
+    }, [userToken]);
 
     // Get user location
     useEffect(() => {
@@ -58,15 +85,31 @@ export default function MapScreen() {
         setModalVisible(true)
     }
 
-    const onSubmit = () => {
-        console.log({
-            charity: selectedCharity,
-            amount: donationAmount,
-            time: date.toISOString(),
-            coords: { lat: region.latitude, lng: region.longitude },
-        })
-        setModalVisible(false)
-    }
+    const onSubmit = async () => {
+        const payload = {
+            name: pledgeName.trim() || 'Untitled Pledge',
+            targetLatitude: region.latitude,
+            targetLongitude: region.longitude,
+            radiusMeters: 100,
+            stakeCents: Math.round(parseFloat(donationAmount) * 100),
+            charityId: selectedCharity,
+            daysOfWeek: [date.getDay()],
+            timeHour: date.getHours(),
+            timeMinute: date.getMinutes(),
+        };
+
+        try {
+            const res = await api.post('/api/pledges', payload, {
+                headers: { 'Authorization': `Bearer ${userToken}` }
+            });
+            console.log('Pledge created:', res.data);
+            setModalVisible(false);
+            router.push('/pledges');
+        } catch (err) {
+            console.error('Failed to create pledge', err);
+            // TODO: show user‐facing error message
+        }
+    };
 
     if (loading) {
         return (
@@ -110,79 +153,117 @@ export default function MapScreen() {
             </TouchableOpacity>
 
             {/* Modal Form */}
+            {/* Modal Form */}
             <Modal
                 visible={modalVisible}
                 transparent
                 animationType="slide"
+                onRequestClose={() => setModalVisible(false)}
             >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Confirm Details</Text>
-
-                        <Text>
-                            Coordinates:{' '}
-                            {region.latitude.toFixed(6)},{' '}
-                            {region.longitude.toFixed(6)}
-                        </Text>
-
-                        <Text style={styles.label}>Charity Selection</Text>
-                        <View style={styles.pickerWrapper}>
-                            <Picker
-                                selectedValue={selectedCharity}
-                                onValueChange={v => setSelectedCharity(v)}
-                            >
-                                <Picker.Item label="Charity A" value="Charity A" />
-                                <Picker.Item label="Charity B" value="Charity B" />
-                                <Picker.Item label="Charity C" value="Charity C" />
-                            </Picker>
-                        </View>
-
-                        <Text style={styles.label}>Donation Amount</Text>
-                        <TextInput
-                            style={styles.input}
-                            keyboardType="numeric"
-                            placeholder="Enter amount"
-                            value={donationAmount}
-                            onChangeText={setDonationAmount}
-                        />
-
-                        <Text style={styles.label}>Select Time</Text>
-                        <TouchableOpacity
-                            onPress={() => setShowPicker(true)}
-                            style={styles.input}
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                    <View style={styles.modalOverlay}>
+                        <KeyboardAvoidingView
+                            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                            style={styles.modalContainer}
                         >
-                            <Text>{date.toLocaleTimeString()}</Text>
-                        </TouchableOpacity>
-
-                        {showPicker && (
-                            <DateTimePicker
-                                value={date}
-                                mode="time"
-                                is24Hour={false}
-                                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                                onChange={(_, newDate) => {
-                                    setShowPicker(false)
-                                    if (newDate) setDate(newDate)
-                                }}
-                            />
-                        )}
-
-                        <View style={styles.modalButtons}>
-                            <TouchableOpacity
-                                style={[styles.button, { flex: 1, marginRight: 8 }]}
-                                onPress={onSubmit}
+                            <ScrollView
+                                contentContainerStyle={styles.modalContent}
+                                keyboardShouldPersistTaps="handled"
                             >
-                                <Text style={styles.buttonText}>Submit</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.button, { flex: 1, backgroundColor: '#aaa' }]}
-                                onPress={() => setModalVisible(false)}
-                            >
-                                <Text style={styles.buttonText}>Cancel</Text>
-                            </TouchableOpacity>
-                        </View>
+                                <Text style={styles.modalTitle}>New Pledge</Text>
+
+                                {/* Pledge Name */}
+                                <Text style={styles.label}>Pledge Name</Text>
+                                <TextInput
+                                    style={[styles.input, styles.inputText]}
+                                    placeholder="Name this pledge (e.g., Morning Run)"
+                                    placeholderTextColor="#888"
+                                    value={pledgeName}
+                                    onChangeText={setPledgeName}
+                                    returnKeyType="done"
+                                />
+
+                                {/* Coordinates */}
+                                <Text style={styles.coordinates}>
+                                    Coordinates: {region.latitude.toFixed(6)}, {region.longitude.toFixed(6)}
+                                </Text>
+
+                                {/* Charity Picker */}
+                                <Text style={styles.label}>Charity Selection</Text>
+                                <View style={styles.pickerWrapper}>
+                                    <Picker
+                                        selectedValue={selectedCharity}
+                                        onValueChange={setSelectedCharity}
+                                        dropdownIconColor="#000"
+                                        style={{ color: '#000' }} // selected item color
+                                    >
+                                        {charities.map(c => (
+                                            <Picker.Item
+                                                key={c.id}
+                                                label={c.name}
+                                                value={c.id}
+                                                color="#000" // fixes white-on-white issue
+                                            />
+                                        ))}
+                                    </Picker>
+                                </View>
+
+                                {/* Stake */}
+                                <Text style={styles.label}>Stake Amount (USD)</Text>
+                                <TextInput
+                                    style={[styles.input, styles.inputText]}
+                                    keyboardType="numeric"
+                                    placeholder="Amount in USD"
+                                    placeholderTextColor="#888"
+                                    value={donationAmount}
+                                    onChangeText={setDonationAmount}
+                                    returnKeyType="done"
+                                />
+
+                                {/* Time */}
+                                <Text style={styles.label}>Select Time</Text>
+                                <TouchableOpacity
+                                    onPress={() => setShowPicker(true)}
+                                    style={[styles.input]}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={styles.timeText}>
+                                        {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </Text>
+                                </TouchableOpacity>
+                                {showPicker && (
+                                    <DateTimePicker
+                                        value={date}
+                                        mode="time"
+                                        is24Hour={false}
+                                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                        onChange={(_, newDate) => {
+                                            setShowPicker(false);
+                                            if (newDate) setDate(newDate);
+                                        }}
+                                        textColor={Platform.OS === 'ios' ? '#000' : undefined} // iOS only
+                                    />
+                                )}
+
+                                {/* Submit + Cancel */}
+                                <View style={styles.buttonRow}>
+                                    <TouchableOpacity
+                                        style={styles.submitButton}
+                                        onPress={onSubmit}
+                                    >
+                                        <Text style={styles.submitText}>Submit</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.cancelButton}
+                                        onPress={() => setModalVisible(false)}
+                                    >
+                                        <Text style={styles.cancelText}>Cancel</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </ScrollView>
+                        </KeyboardAvoidingView>
                     </View>
-                </View>
+                </TouchableWithoutFeedback>
             </Modal>
         </View>
 
@@ -212,26 +293,94 @@ const styles = StyleSheet.create({
     buttonText: { color: 'white', fontWeight: '600' },
 
     modalOverlay: {
-        flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'center', alignItems: 'center',
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalContainer: {
+        width: '90%',
+        maxHeight: '80%',
     },
     modalContent: {
-        width: '85%', backgroundColor: 'white',
-        borderRadius: 12, padding: 16,
+        backgroundColor: '#fefefe', // slight contrast from full white
+        borderRadius: 10,
+        padding: 20,
+        width: '100%',
     },
     modalTitle: {
-        fontSize: 18, fontWeight: '600', marginBottom: 12,
+        fontSize: 18,
+        fontWeight: '600',
+        marginBottom: 12,
+        textAlign: 'center',
     },
-    label: { marginTop: 12, fontWeight: '500' },
+    coordinates: {
+        marginBottom: 12,
+        color: '#555',
+    },
+    label: {
+        color: '#333',
+        fontSize: 14,
+        fontWeight: '500',
+        marginBottom: 4,
+        marginTop: 10,
+    },
     pickerWrapper: {
-        borderWidth: 1, borderColor: '#ccc',
-        borderRadius: 6, marginTop: 4,
+        backgroundColor: '#ffffff',
+        borderWidth: 1,
+        borderColor: '#ccc',
+        borderRadius: 6,
+        marginBottom: 10,
+    },
+    picker: {
+        width: '100%',
+    },
+    pickerItem: {
+        color: '#000', // ensures dropdown item text is visible
     },
     input: {
-        borderWidth: 1, borderColor: '#ccc',
-        borderRadius: 6, padding: 8, marginTop: 4,
+        backgroundColor: '#ffffff',
+        borderWidth: 1,
+        borderColor: '#ccc',
+        borderRadius: 6,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        color: '#000', // ensure black text
+        marginBottom: 10,
     },
-    modalButtons: {
-        flexDirection: 'row', marginTop: 16,
+    inputText: {
+        color: '#000',
     },
-})
+    buttonRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 20,
+    },
+    submitButton: {
+        flex: 1,
+        backgroundColor: '#007AFF',
+        padding: 12,
+        borderRadius: 4,
+        alignItems: 'center',
+    },
+    cancelButton: {
+        flex: 1,
+        backgroundColor: '#ccc',
+        padding: 12,
+        borderRadius: 4,
+        alignItems: 'center',
+        marginLeft: 10,
+    },
+    submitText: {
+        color: '#fff',
+        fontWeight: '600',
+    },
+    cancelText: {
+        color: '#333',
+        fontWeight: '600',
+    },
+    timeText: {
+        color: '#000',
+        fontSize: 16,
+    },
+});

@@ -28,9 +28,9 @@ export default function LoginScreen() {
     useEffect(() => {
         // Redirect to map if user is already logged in
         if (userToken) {
-            router.replace('/map');
+            router.replace('/pledges');
         }
-    })
+    }, [userToken])
 
     const handleLogin = async () => {
         if (!email || !password) {
@@ -41,7 +41,7 @@ export default function LoginScreen() {
         setIsSubmitting(true);
         try {
             await signIn(email.trim(), password);
-            router.replace('/map');
+            router.replace('/pledges');
         } catch {
             // Error is already handled in signIn
         } finally {

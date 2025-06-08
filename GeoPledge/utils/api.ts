@@ -13,7 +13,7 @@ console.log('API Base URL:', API_BASE_URL);
 
 // Create an axios instance
 const api = axios.create({
-    baseURL: `${API_BASE_URL}/api`,
+    baseURL: `${API_BASE_URL}/`,
     headers: {
         'Content-Type': 'application/json',
     },

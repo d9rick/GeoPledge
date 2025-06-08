@@ -70,8 +70,8 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // Generate JWT
-        String token = jwtUtils.generateJwtToken(email);
-        return new JwtResponse(token);
+        String jwt = jwtUtils.generateJwtToken(user.getId());
+        return new JwtResponse(jwt);
     }
 
     /**

@@ -17,7 +17,7 @@ export default function Index() {
 
     // Redirect based on auth state
     if (userToken) {
-        return <Redirect href="/map" />;
+        return <Redirect href="/pledges" />;
     } else {
         return <Redirect href="/login" />;
     }
