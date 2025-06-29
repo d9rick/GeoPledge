@@ -20,15 +20,15 @@ interface Pledge {
     name?: string;
     nextScheduledRun?: string;
     stakeCents: number;
-    lastStatus?: 'MET' | 'VIOLATED' | null;
+    lastStatus?: 'MET' | 'VIOLATED' | 'PENDING';
 }
 
 export default function PledgeListScreen() {
     const { userToken, isLoading, signOut } = useAuth();
     const router = useRouter();
     const [pledges, setPledges] = useState<Pledge[]>([]);
-    const [loading, setLoading]   = useState(false);
-    const [error, setError]       = useState<string|null>(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     /* 1. Redirect if auth finished but no token */
     useEffect(() => {
@@ -39,7 +39,7 @@ export default function PledgeListScreen() {
 
     /* 2. Fetch data once we have a valid token */
     useEffect(() => {
-        if (!userToken) return;          // ← guard keeps hook unconditional
+        if (!userToken) return;
         const fetch = async () => {
             try {
                 setLoading(true);
@@ -49,7 +49,7 @@ export default function PledgeListScreen() {
                 setPledges(data);
             } catch (err: any) {
                 if (err.response?.status === 401 || err.response?.status === 403) {
-                    await signOut();           // token no longer valid
+                    await signOut();
                     router.replace('/login');
                 } else {
                     setError('Failed to load pledges');
@@ -84,6 +84,14 @@ export default function PledgeListScreen() {
                 <Text style={styles.logoutText}>Log Out</Text>
             </TouchableOpacity>
 
+            {/* Admin Test Link */}
+            <TouchableOpacity
+                style={styles.adminLink}
+                onPress={() => router.push('/admin')}
+            >
+                <Text style={styles.adminText}>Admin Test</Text>
+            </TouchableOpacity>
+
             <FlatList
                 data={pledges}
                 keyExtractor={item => item.id}
@@ -101,17 +109,18 @@ export default function PledgeListScreen() {
             </TouchableOpacity>
         </View>
     );
-};
+}
 
 const PledgeCard: React.FC<{ pledge: Pledge }> = ({ pledge }) => {
     const status = pledge.lastStatus ?? 'PENDING';
     const iconName =
-        status === 'MET'
-            ? 'check-circle'
-            : status === 'VIOLATED'
-                ? 'cancel'
+        status === 'MET' ? 'check-circle'
+            : status === 'VIOLATED' ? 'cancel'
                 : 'hourglass-empty';
-    const color = status === 'MET' ? 'green' : status === 'VIOLATED' ? 'red' : 'gray';
+    const color =
+        status === 'MET' ? 'green'
+            : status === 'VIOLATED' ? 'red'
+                : 'gray';
     const stake = `$${(pledge.stakeCents / 100).toFixed(2)}`;
     const nextRun = pledge.nextScheduledRun
         ? new Date(pledge.nextScheduledRun).toLocaleString()
@@ -119,37 +128,68 @@ const PledgeCard: React.FC<{ pledge: Pledge }> = ({ pledge }) => {
 
     return (
         <TouchableOpacity style={styles.card}>
+            <MaterialIcons name={iconName} size={24} color={color} />
             <View style={styles.cardContent}>
-                <Text style={styles.cardTitle}>
-                    {pledge.name?.trim() || 'Unnamed Pledge'}
-                </Text>
+                <Text style={styles.cardTitle}>{pledge.name}</Text>
                 <Text style={styles.cardText}>Next: {nextRun}</Text>
                 <Text style={styles.cardText}>Stake: {stake}</Text>
             </View>
-            <MaterialIcons name={iconName} size={24} color={color} />
         </TouchableOpacity>
     );
 };
 
 const styles = StyleSheet.create({
     center: {
-        flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     logout: {
-        position: 'absolute', top: Platform.OS === 'ios' ? 60 : 30, right: 16, zIndex: 20
+        padding: 16,
+        backgroundColor: '#fff',
+        alignItems: 'flex-end',
     },
-    logoutText: { color: 'red', fontWeight: '600' },
+    logoutText: {
+        color: 'red',
+        fontWeight: '600',
+    },
+    adminLink: {
+        padding: 16,
+        backgroundColor: '#fff',
+        alignItems: 'flex-end',
+    },
+    adminText: {
+        color: '#007AFF',
+        fontWeight: '600',
+    },
     card: {
-        flexDirection: 'row', alignItems: 'center',
-        padding: 16, borderBottomWidth: 1, borderColor: '#ccc', backgroundColor: '#fff'
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderColor: '#ccc',
+        backgroundColor: '#fff',
     },
-    cardContent: { flex: 1 },
-    cardTitle: { fontSize: 16, fontWeight: 'bold' },
-    cardText: { fontSize: 14 },
+    cardContent: {
+        flex: 1,
+    },
+    cardTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    cardText: {
+        fontSize: 14,
+    },
     addButton: {
-        position: 'absolute', bottom: 24, right: 24,
-        width: 56, height: 56, borderRadius: 28,
-        backgroundColor: '#007AFF', alignItems: 'center',
-        justifyContent: 'center', elevation: 5
+        position: 'absolute',
+        bottom: 24,
+        right: 24,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: '#007AFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 5,
     },
 });

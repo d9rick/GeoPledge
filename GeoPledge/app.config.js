@@ -55,6 +55,14 @@ export default {
         ],
         experiments: {
             typedRoutes: true
+        },
+        owner: "d9rick",
+        extra: {
+          eas: {
+              owner: "d9rick",
+              projectId: "130ece70-6802-489a-8159-210e1ceb645e"
+          }
         }
-    }
+    },
+    owner: "d9rick",
 };

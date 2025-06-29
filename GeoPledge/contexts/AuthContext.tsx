@@ -47,6 +47,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 console.log('AuthContext: Token loaded:', token ? 'Token exists' : 'No token');
                 if (token) {
                     setUserToken(token);
+                    setUserId(getUserIdFromToken(token));
+
+                    // once we know both, register this device
+                    const expoToken = await registerForPushNotificationsAsync();
+                    if (expoToken && userId) {
+                        await api.post(`/api/users/${userId}/push-token`,
+                            {token: expoToken},
+                            {headers: {Authorization: `Bearer ${token}`}}
+                        );
+                    }
                 }
             } catch (e) {
                 console.warn('Error reading token from SecureStore', e);
@@ -82,6 +92,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             // Store the token
             await SecureStore.setItemAsync('userToken', token);
             setUserToken(token);
+
+            // extract the user id
+            // extract the userId
+            const id = getUserIdFromToken(token);
+            if (!id) throw new Error('Cannot parse userId from token');
+
+            // now register for push notifications
+            const expoToken = await registerForPushNotificationsAsync();
+            if (expoToken) {
+                await api.post(`/api/users/${id}/push-token`,
+                    { token: expoToken },
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+            }
 
         } catch (err: any) {
             console.error('Login failed:', err);

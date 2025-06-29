@@ -1,6 +1,7 @@
 // utils/pushNotifications.ts
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 
 export async function registerForPushNotificationsAsync(): Promise<string | null> {
     if (!Device.isDevice) {
@@ -20,7 +21,14 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
         return null;
     }
 
+    // get the project id
+    const projectId = Constants?.expoConfig?.extra?.eas.projectId;
+
+    if (!projectId) {
+        console.warn('Error getting projectId');
+    }
+
     // 2) Get the token
-    const tokenData = await Notifications.getExpoPushTokenAsync();
+    const tokenData = await Notifications.getExpoPushTokenAsync(projectId);
     return tokenData.data;
 }
