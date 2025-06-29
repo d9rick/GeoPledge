@@ -202,7 +202,7 @@ export default function MapScreen() {
                                                 key={c.id}
                                                 label={c.name}
                                                 value={c.id}
-                                                color="#000" // fixes white-on-white issue
+                                                color="#000"
                                             />
                                         ))}
                                     </Picker>

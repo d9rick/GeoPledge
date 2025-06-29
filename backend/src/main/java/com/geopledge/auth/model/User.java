@@ -30,6 +30,9 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
+    @Column(name = "expo_push_token", length = 255)
+    private String expoPushToken;
+
     @Setter
     @Column(nullable = false)
     private String password; // stored as BCrypt‐hashed
@@ -39,5 +42,13 @@ public class User {
     public User(String email, String password) {
         this.email = email;
         this.password = password;
+    }
+
+    public void setPushToken(String token) {
+        expoPushToken = token;
+    }
+
+    public String getPushToken() {
+        return expoPushToken;
     }
 }

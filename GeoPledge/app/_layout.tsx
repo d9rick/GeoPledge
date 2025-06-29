@@ -25,7 +25,10 @@ function AppStack() {
 
     // 2) once isLoading===false, render the appropriate Stack.Screens
     return (
-        <Stack screenOptions={{ headerShown: false }}>
+        <Stack screenOptions={{
+            headerShown: false,
+            headerBackVisible: false,
+        }}>
             {/* Always include index */}
             <Stack.Screen name="index" />
 

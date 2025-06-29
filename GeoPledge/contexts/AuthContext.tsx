@@ -8,6 +8,8 @@ import React, {
 } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import api from '../utils/api';
+import { registerForPushNotificationsAsync } from '../utils/pushNotifications';
+import { getUserIdFromToken } from '../utils/jwt';
 import { Alert } from 'react-native';
 
 type AuthContextType = {
@@ -32,6 +34,7 @@ export function useAuth() {
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [userToken, setUserToken] = useState<string | null>(null);
+    const [userId,    setUserId]    = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [isSigningUp, setIsSigningUp] = useState(false);
 
@@ -161,6 +164,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUserToken(null);
         }
     };
+
+    // contexts/AuthContext.tsx (inside AuthProvider component)
+    useEffect(() => {
+        // plug signOut into axios after provider is ready
+        const id = api.interceptors.response.use(
+            res => res,
+            err => {
+                if (err.response?.status === 401 || err.response?.status === 403) {
+                    signOut();            // ← we are inside React now, no rules broken
+                }
+                return Promise.reject(err);
+            }
+        );
+        // eject on unmount to avoid leaks
+        return () => api.interceptors.response.eject(id);
+    }, [signOut]);
 
     return (
         <AuthContext.Provider value={{ userToken, isLoading, signIn, signUp, signOut }}>

@@ -1,12 +1,20 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
-import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { MaterialIcons } from '@expo/vector-icons';
-import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'expo-router';
-import api from "@/utils/api";
+// app/pledges.tsx
 
-// Pledge data interface
+import React, { useEffect, useState } from 'react';
+import {
+    View,
+    Text,
+    FlatList,
+    TouchableOpacity,
+    ActivityIndicator,
+    StyleSheet,
+    Platform
+} from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import api from '@/utils/api';
+import { useAuth } from '@/contexts/AuthContext';
+
 interface Pledge {
     id: string;
     name?: string;
@@ -15,49 +23,46 @@ interface Pledge {
     lastStatus?: 'MET' | 'VIOLATED' | null;
 }
 
-const PledgeListScreen: React.FC = () => {
-    const navigation = useNavigation<NavigationProp<any>>();
-    const { userToken } = useAuth();
+export default function PledgeListScreen() {
+    const { userToken, isLoading, signOut } = useAuth();
     const router = useRouter();
     const [pledges, setPledges] = useState<Pledge[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading]   = useState(false);
+    const [error, setError]       = useState<string|null>(null);
 
-    const fetchPledges = async () => {
-        try {
-            setLoading(true);
-            const response = await api.get<Pledge[]>('/api/pledges', {
-                headers: { Authorization: `Bearer ${userToken}` },
-            });
-            setPledges(response.data);
-        } catch {
-            setError('Failed to load pledges');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // load once on component mount
+    /* 1. Redirect if auth finished but no token */
     useEffect(() => {
-        fetchPledges();
-    }, []);
+        if (!isLoading && !userToken) {
+            router.replace('/login');
+        }
+    }, [isLoading, userToken]);
 
-    const onPledgePress = (pledgeId: string) => {
-        navigation.navigate('PledgeDetail', { pledgeId });
-    };
+    /* 2. Fetch data once we have a valid token */
+    useEffect(() => {
+        if (!userToken) return;          // ← guard keeps hook unconditional
+        const fetch = async () => {
+            try {
+                setLoading(true);
+                const { data } = await api.get<Pledge[]>('/api/pledges', {
+                    headers: { Authorization: `Bearer ${userToken}` },
+                });
+                setPledges(data);
+            } catch (err: any) {
+                if (err.response?.status === 401 || err.response?.status === 403) {
+                    await signOut();           // token no longer valid
+                    router.replace('/login');
+                } else {
+                    setError('Failed to load pledges');
+                }
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetch();
+    }, [userToken]);
 
-    const renderItem = ({ item }: { item: Pledge }) => (
-        <PledgeCard pledge={item} onPress={() => onPledgePress(item.id)} />
-    );
-
-    if (loading) {
-        return (
-            <View style={styles.center}>
-                <ActivityIndicator size="large" />
-            </View>
-        );
-    }
-
+    /* 3. UI branches (pure rendering, no hooks here) */
+    if (isLoading || loading) return <ActivityIndicator />;
     if (error) {
         return (
             <View style={styles.center}>
@@ -68,14 +73,26 @@ const PledgeListScreen: React.FC = () => {
 
     return (
         <View style={{ flex: 1 }}>
+            {/* Log out */}
+            <TouchableOpacity
+                style={styles.logout}
+                onPress={async () => {
+                    await signOut();
+                    router.replace('/login');
+                }}
+            >
+                <Text style={styles.logoutText}>Log Out</Text>
+            </TouchableOpacity>
+
             <FlatList
                 data={pledges}
-                keyExtractor={(item) => item.id}
-                renderItem={renderItem}
+                keyExtractor={item => item.id}
+                renderItem={({ item }) => <PledgeCard pledge={item} />}
                 contentContainerStyle={pledges.length === 0 && styles.center}
                 ListEmptyComponent={<Text>No pledges found. Create one to get started!</Text>}
             />
-            {/* Floating “Add” button */}
+
+            {/* Floating Add Button */}
             <TouchableOpacity
                 style={styles.addButton}
                 onPress={() => router.push('/map')}
@@ -86,75 +103,53 @@ const PledgeListScreen: React.FC = () => {
     );
 };
 
-// each of the little cards
-const PledgeCard: React.FC<{ pledge: Pledge; onPress: () => void }> = ({ pledge, onPress }) => {
-    // Normalize status
+const PledgeCard: React.FC<{ pledge: Pledge }> = ({ pledge }) => {
     const status = pledge.lastStatus ?? 'PENDING';
-    const statusIconName =
+    const iconName =
         status === 'MET'
             ? 'check-circle'
             : status === 'VIOLATED'
                 ? 'cancel'
                 : 'hourglass-empty';
-    const statusColor = status === 'MET' ? 'green' : status === 'VIOLATED' ? 'red' : 'gray';
-
-    // Format money and date (guard against missing data)
-    const formattedStake = `$${(pledge.stakeCents / 100).toFixed(2)}`;
-    const formattedNext = pledge.nextScheduledRun
+    const color = status === 'MET' ? 'green' : status === 'VIOLATED' ? 'red' : 'gray';
+    const stake = `$${(pledge.stakeCents / 100).toFixed(2)}`;
+    const nextRun = pledge.nextScheduledRun
         ? new Date(pledge.nextScheduledRun).toLocaleString()
         : 'No scheduled run';
 
     return (
-        <TouchableOpacity style={styles.card} onPress={onPress}>
+        <TouchableOpacity style={styles.card}>
             <View style={styles.cardContent}>
                 <Text style={styles.cardTitle}>
                     {pledge.name?.trim() || 'Unnamed Pledge'}
                 </Text>
-                <Text style={styles.cardText}>Next: {formattedNext}</Text>
-                <Text style={styles.cardText}>Stake: {formattedStake}</Text>
+                <Text style={styles.cardText}>Next: {nextRun}</Text>
+                <Text style={styles.cardText}>Stake: {stake}</Text>
             </View>
-            <MaterialIcons name={statusIconName} size={24} color={statusColor} />
+            <MaterialIcons name={iconName} size={24} color={color} />
         </TouchableOpacity>
     );
 };
 
 const styles = StyleSheet.create({
     center: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16,
+        flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16
     },
+    logout: {
+        position: 'absolute', top: Platform.OS === 'ios' ? 60 : 30, right: 16, zIndex: 20
+    },
+    logoutText: { color: 'red', fontWeight: '600' },
     card: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderColor: '#ccc',
-        backgroundColor: '#fff',
+        flexDirection: 'row', alignItems: 'center',
+        padding: 16, borderBottomWidth: 1, borderColor: '#ccc', backgroundColor: '#fff'
     },
-    cardContent: {
-        flex: 1,
-    },
-    cardTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    cardText: {
-        fontSize: 14,
-    },
+    cardContent: { flex: 1 },
+    cardTitle: { fontSize: 16, fontWeight: 'bold' },
+    cardText: { fontSize: 14 },
     addButton: {
-        position: 'absolute',
-        bottom: 24,
-        right: 24,
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: '#007AFF',
-        alignItems: 'center',
-        justifyContent: 'center',
-        elevation: 5,
+        position: 'absolute', bottom: 24, right: 24,
+        width: 56, height: 56, borderRadius: 28,
+        backgroundColor: '#007AFF', alignItems: 'center',
+        justifyContent: 'center', elevation: 5
     },
 });
-
-export default PledgeListScreen;

@@ -25,7 +25,7 @@ api.interceptors.request.use(
     async (config) => {
         try {
             const token = await SecureStore.getItemAsync('userToken');
-            if (token && typeof token === 'string') {
+            if (token) {
                 config.headers!['Authorization'] = `Bearer ${token}`;
             }
         } catch (error) {

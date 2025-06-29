@@ -1,11 +1,15 @@
 package com.geopledge.service;
 
+import com.geopledge.dto.LocationFixDTO;
 import com.geopledge.dto.PledgeCreateDTO;
 import com.geopledge.dto.PledgeDTO;
 import com.geopledge.model.Pledge;
 import com.geopledge.model.PledgeCheck;
 import com.geopledge.repository.PledgeRepository;
 import com.geopledge.repository.PledgeCheckRepository;
+import com.geopledge.util.GeoUtils;
+import jakarta.transaction.Status;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -89,5 +93,50 @@ public class PledgeService {
         // compute next run just like in getPledgesForUser
         ZonedDateTime nextRun = computeNextRun(p, p.getCreatedAt());
         return new PledgeDTO(p.getId(), p.getName(), nextRun, p.getStakeCents(), null);
+    }
+
+    @Transactional
+    public void recordFix(UUID userId, LocationFixDTO fixUtc) {
+
+        ZonedDateTime now = fixUtc.at()
+                .atZone(ZoneId.systemDefault()); // localise once
+        List<Pledge> candidates = pledgeRepo.findByUserIdAndActiveTrue(userId);
+
+        for (Pledge p : candidates) {
+            /* 1️⃣ Is this pledge “scheduled” right now? */
+            if (!isScheduledNow(p, now)) continue;
+
+            /* 2️⃣ Measure distance user→target */
+            double metres = GeoUtils.haversine(
+                    fixUtc.lat(), fixUtc.lon(),
+                    p.getTargetLatitude(), p.getTargetLongitude());
+
+            PledgeCheck.Status status = metres <= p.getRadiusMeters()
+                    ? PledgeCheck.Status.MET : PledgeCheck.Status.VIOLATED;
+
+            /* 3️⃣ Persist the check row */
+            PledgeCheck pc = new PledgeCheck();
+            pc.setId(UUID.randomUUID());
+            pc.setPledgeId(p.getId());
+            pc.setScheduledFor(now);       // this HH:MM slot
+            pc.setStatus(status);
+            pc.setUserLatitude(fixUtc.lat());
+            pc.setUserLongitude(fixUtc.lon());
+            pc.setCheckedAt(ZonedDateTime.now(ZoneId.systemDefault()));
+            checkRepo.save(pc);
+
+            /* 4️⃣ Optional: charge stake on violation */
+//            if (status == Status.VIOLATED) {
+//                penaltyService.charge(userId, p);     // implement or inject later
+//            }
+        }
+    }
+
+    /* helper */
+    private boolean isScheduledNow(Pledge p, ZonedDateTime t) {
+        int dow = t.getDayOfWeek().getValue() % 7;          // SUN→0
+        if (!p.getDaysOfWeek().contains(dow)) return false;
+        return t.getHour() == p.getTimeHour()
+                && t.getMinute() == p.getTimeMinute();
     }
 }

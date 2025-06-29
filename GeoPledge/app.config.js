@@ -15,6 +15,13 @@ export default {
             config: {
                 googleMapsApiKey: process.env.MAPS_API_KEY,
             },
+            infoPlist: {
+                NSLocationAlwaysAndWhenInUseUsageDescription:
+                    "GeoPledge needs your location to verify pledges, even when the app is closed.",
+                NSLocationWhenInUseUsageDescription:
+                    "GeoPledge needs your location to verify pledges.",
+                UIBackgroundModes: ["location", "fetch"]
+            },
         },
         android: {
             adaptiveIcon: {

@@ -8,4 +8,5 @@ import java.util.UUID;
 
 public interface PledgeRepository extends JpaRepository<Pledge, UUID> {
     List<Pledge> findByUserId(UUID userId);
+    List<Pledge> findByUserIdAndActiveTrue(UUID userId);
 }
