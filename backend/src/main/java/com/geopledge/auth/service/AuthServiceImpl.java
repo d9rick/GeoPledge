@@ -9,6 +9,9 @@ import com.geopledge.auth.dto.MessageResponse;
 import com.geopledge.auth.model.User;
 import com.geopledge.auth.repository.UserRepository;
 import com.geopledge.auth.security.JwtUtils;
+import com.geopledge.exception.UserNotFoundException;
+import com.geopledge.exception.InvalidPasswordException;
+import com.geopledge.exception.EmailAlreadyExistsException;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -39,7 +42,7 @@ public class AuthServiceImpl implements AuthService {
     public MessageResponse registerUser(SignupRequest signupRequest) {
         String email = signupRequest.getEmail().toLowerCase().trim();
         if (userRepository.existsByEmail(email)) {
-            throw new RuntimeException("Error: Email is already in use!");
+            throw new EmailAlreadyExistsException();
         }
 
         // Create new user's account
@@ -62,11 +65,11 @@ public class AuthServiceImpl implements AuthService {
 
         // Lookup user by email
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Error: User not found with email: " + email));
+                .orElseThrow(() -> new UserNotFoundException(email));
 
         // Verify password
         if (!passwordEncoder.matches(rawPassword, user.getPassword())) {
-            throw new RuntimeException("Error: Invalid password");
+            throw new InvalidPasswordException();
         }
 
         // Generate JWT
@@ -76,7 +79,7 @@ public class AuthServiceImpl implements AuthService {
 
     /**
      * “Logout” – since JWTs are stateless, a common approach is to do nothing here (or to blacklist the token).
-     * For simplicity, we’ll just return a message. If you want true logout semantics, maintain a blacklist.
+     * For simplicity, we'll just return a message. If you want true logout semantics, maintain a blacklist.
      */
     @Override
     @Transactional

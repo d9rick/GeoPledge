@@ -38,7 +38,15 @@ export default {
         web: {
             bundler: "metro",
             output: "static",
-            favicon: "./assets/images/favicon.png"
+            favicon: "./assets/images/favicon.png",
+            config: {
+                // Disable react-native-maps on web
+                resolver: {
+                    alias: {
+                        'react-native-maps': 'react-native-web'
+                    }
+                }
+            }
         },
         plugins: [
             "expo-router",

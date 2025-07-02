@@ -1,22 +1,24 @@
-import React, { useState, useEffect, useContext } from 'react';
+import { AuthContext, useAuth } from '@/contexts/AuthContext';
+import api from "@/utils/api";
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Picker } from '@react-native-picker/picker';
+import * as Location from 'expo-location';
+import { useRouter } from "expo-router";
+import React, { useContext, useEffect, useState } from 'react';
 import {
-    View,
-    StyleSheet,
     ActivityIndicator,
-    Text,
+    Animated,
+    Keyboard, KeyboardAvoidingView,
     Modal,
+    Platform,
+    StyleSheet,
+    Text,
     TextInput,
     TouchableOpacity,
-    Platform,
-    TouchableWithoutFeedback, Keyboard, KeyboardAvoidingView, Animated,
+    TouchableWithoutFeedback,
+    View,
 } from 'react-native';
-import MapView, { Region } from 'react-native-maps';
-import * as Location from 'expo-location';
-import { Picker } from '@react-native-picker/picker';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import {AuthContext, useAuth} from '@/contexts/AuthContext';
-import { useRouter } from "expo-router";
-import api from "@/utils/api";
+import MapView from 'react-native-maps';
 import ScrollView = Animated.ScrollView;
 
 export const screenOptions = {
@@ -29,7 +31,7 @@ export default function MapScreen() {
     const { userToken } = useAuth();
     const router = useRouter();
     const [loading, setLoading] = useState(true)
-    const [region, setRegion] = useState<Region>({
+    const [region, setRegion] = useState<any>({
         latitude: 37.78825,
         longitude: -122.4324,
         latitudeDelta: 0.01,
@@ -76,7 +78,7 @@ export default function MapScreen() {
             }
             const loc = await Location.getCurrentPositionAsync({})
             const { latitude, longitude } = loc.coords
-            setRegion(r => ({ ...r, latitude, longitude }))
+            setRegion((r: any) => ({ ...r, latitude, longitude }))
             setLoading(false)
         })()
     }, [])
@@ -137,7 +139,7 @@ export default function MapScreen() {
             <MapView
                 style={styles.map}
                 region={region}
-                onRegionChangeComplete={r => setRegion(r)}
+                onRegionChangeComplete={(r: any) => setRegion(r)}
             />
 
             {/* Center pin */}

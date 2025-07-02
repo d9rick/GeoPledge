@@ -1,16 +1,16 @@
 // /contexts/AuthContext.tsx
+import * as SecureStore from 'expo-secure-store';
 import React, {
     createContext,
-    useState,
-    useEffect,
     ReactNode,
     useContext,
+    useEffect,
+    useState,
 } from 'react';
-import * as SecureStore from 'expo-secure-store';
-import api from '../utils/api';
-import { registerForPushNotificationsAsync } from '../utils/pushNotifications';
-import { getUserIdFromToken } from '../utils/jwt';
 import { Alert } from 'react-native';
+import api from '../utils/api';
+import { getUserIdFromToken } from '../utils/jwt';
+import { registerForPushNotificationsAsync } from '../utils/pushNotifications';
 
 type AuthContextType = {
     userToken: string | null;
@@ -75,7 +75,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             // Debug logging to see what the server returns
             console.log('Login response:', res.data);
 
-            // The backend returns { token: "xxx", tokenType: "Bearer" }
             const token = res.data?.token;
 
             // Validate that token exists and is a string
@@ -94,7 +93,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUserToken(token);
 
             // extract the user id
-            // extract the userId
             const id = getUserIdFromToken(token);
             if (!id) throw new Error('Cannot parse userId from token');
 
@@ -108,22 +106,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
 
         } catch (err: any) {
-            console.error('Login failed:', err);
-
-            // Check if it's a SecureStore error
-            if (err.message?.includes('Invalid value provided to SecureStore')) {
-                Alert.alert(
-                    'Login Error',
-                    'Authentication token format error. Please contact support.'
-                );
-            } else if (err.response?.data?.message) {
-                // Backend error message (e.g., "Error: Invalid password")
-                Alert.alert('Login Error', err.response.data.message);
-            } else if (err.response?.status === 404) {
-                Alert.alert('Login Error', 'Server not found. Please check your connection.');
-            } else {
-                Alert.alert('Login Error', err.message || 'Unable to log in');
-            }
+            // Only re-throw the original error so error.response is preserved
             throw err;
         }
     };

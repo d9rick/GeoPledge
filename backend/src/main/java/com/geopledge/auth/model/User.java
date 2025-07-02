@@ -2,21 +2,16 @@
 package com.geopledge.auth.model;
 
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
 import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.util.UUID;
 
-@Getter
 @Entity
 @Table(name = "users", uniqueConstraints = {
         @UniqueConstraint(columnNames = "email")
 })
-@Data
 public class User {
 
     @Id
@@ -26,14 +21,12 @@ public class User {
     @Column(length = 36, updatable = false, nullable = false)
     private UUID id;
 
-    @Setter
     @Column(nullable = false, unique = true)
     private String email;
 
     @Column(name = "expo_push_token", length = 255)
     private String expoPushToken;
 
-    @Setter
     @Column(nullable = false)
     private String password; // stored as BCrypt‐hashed
 
@@ -44,11 +37,14 @@ public class User {
         this.password = password;
     }
 
-    public void setPushToken(String token) {
-        expoPushToken = token;
-    }
+    // Getters
+    public UUID getId() { return id; }
+    public String getEmail() { return email; }
+    public String getPassword() { return password; }
+    public String getPushToken() { return expoPushToken; }
 
-    public String getPushToken() {
-        return expoPushToken;
-    }
+    // Setters
+    public void setEmail(String email) { this.email = email; }
+    public void setPassword(String password) { this.password = password; }
+    public void setPushToken(String token) { this.expoPushToken = token; }
 }
