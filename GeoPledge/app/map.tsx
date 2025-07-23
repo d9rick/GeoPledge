@@ -1,10 +1,11 @@
+import GooglePlacesAutocomplete from "@/app/components/GooglePlacesAutocomplete";
 import { AuthContext, useAuth } from '@/contexts/AuthContext';
 import api from "@/utils/api";
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import * as Location from 'expo-location';
 import { useRouter } from "expo-router";
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Animated,
@@ -18,6 +19,7 @@ import {
     TouchableWithoutFeedback,
     View,
 } from 'react-native';
+import 'react-native-get-random-values';
 import MapView from 'react-native-maps';
 import ScrollView = Animated.ScrollView;
 
@@ -30,6 +32,7 @@ export default function MapScreen() {
     const { signOut } = useContext(AuthContext);
     const { userToken } = useAuth();
     const router = useRouter();
+    const mapRef = useRef<MapView>(null);
     const [loading, setLoading] = useState(true)
     const [region, setRegion] = useState<any>({
         latitude: 37.78825,
@@ -124,6 +127,25 @@ export default function MapScreen() {
 
     return (
         <View style={styles.container}>
+            {/* ←– Search bar overlay –– */}
+            <GooglePlacesAutocomplete
+                currentLocation={region}
+                onPlaceSelect={locationDetails => {
+                    console.log('Location selected:', locationDetails);
+                    if (locationDetails && mapRef.current) {
+                        const { lat, lng } = locationDetails;
+                        const newRegion = {
+                            latitude: lat,
+                            longitude: lng,
+                            latitudeDelta: 0.01,
+                            longitudeDelta: 0.01,
+                        };
+                        console.log('Setting new region:', newRegion);
+                        mapRef.current.animateToRegion(newRegion, 1000); // Animate over 1 second
+                        setRegion(newRegion); // Keep state in sync
+                    }
+                }}
+            />
 
             {/* Log out button */}
             <TouchableOpacity
@@ -136,10 +158,12 @@ export default function MapScreen() {
                 <Text style={{ color: 'red', fontWeight: '600' }}>Log Out</Text>
             </TouchableOpacity>
 
+            {/* ←– Your Map –– */}
             <MapView
+                ref={mapRef}
                 style={styles.map}
                 region={region}
-                onRegionChangeComplete={(r: any) => setRegion(r)}
+                onRegionChangeComplete={r => setRegion(r)}
             />
 
             {/* Center pin */}
@@ -154,7 +178,6 @@ export default function MapScreen() {
                 <Text style={styles.buttonText}>Select Location</Text>
             </TouchableOpacity>
 
-            {/* Modal Form */}
             {/* Modal Form */}
             <Modal
                 visible={modalVisible}
@@ -275,15 +298,42 @@ export default function MapScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1 },
     map: { flex: 1 },
+    searchContainer: {
+        position: 'absolute',
+        top: Platform.OS === 'ios' ? 60 : 30,
+        left: 16,
+        right: 16,
+        zIndex: 10,
+        backgroundColor: 'white',
+        borderRadius: 8,
+        elevation: 5,            // android shadow
+        shadowColor: '#000',     // ios shadow
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 2 },
+    },
+    autocompleteWrapper: {
+        position: 'absolute',
+        top: Platform.OS === 'ios' ? 60 : 30,
+        left: 16,
+        right: 16,
+        // this zIndex/elevation makes sure it’s above the MapView
+        zIndex: 10,
+        elevation: 10,
+        backgroundColor: 'transparent',
+    },
+    searchInput: {
+        height: 40,
+        paddingHorizontal: 12,
+    },
     loading: {
         flex: 1, justifyContent: 'center', alignItems: 'center'
     },
     pin: {
         position: 'absolute',
         top: '50%', left: '50%',
-        marginLeft: -12, marginTop: -24, // adjust for pin size
+        marginLeft: -12, marginTop: -24,
         fontSize: 36,
-        zIndex: 10,
     },
     button: {
         position: 'absolute',
@@ -384,5 +434,36 @@ const styles = StyleSheet.create({
     timeText: {
         color: '#000',
         fontSize: 16,
+    },
+    placesContainer: {
+        flex: 1,
+    },
+    placesTextInput: {
+        height: 44,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#ddd',
+        backgroundColor: '#fff',
+        paddingHorizontal: 12,
+        fontSize: 16,
+        marginBottom: 8, // space between input and list
+        // shadow for depth
+        shadowColor: '#000',
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 3,
+    },
+    placesListView: {
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#ddd',
+        // shadow for depth
+        shadowColor: '#000',
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 3,
     },
 });

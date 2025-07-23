@@ -5,6 +5,10 @@ import com.geopledge.auth.dto.JwtResponse;
 import com.geopledge.auth.dto.LoginRequest;
 import com.geopledge.auth.dto.MessageResponse;
 import com.geopledge.auth.dto.SignupRequest;
+import com.geopledge.auth.dto.CheckEmailRequest;
+import com.geopledge.exception.EmailAlreadyExistsException;
+import com.geopledge.exception.InvalidPasswordException;
+import com.geopledge.exception.UserNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
@@ -33,7 +37,7 @@ public class AuthController {
      */
     @PostMapping("/signup")
     public ResponseEntity<MessageResponse> registerUser(
-            @Valid @RequestBody SignupRequest signupRequest) {
+            @Valid @RequestBody SignupRequest signupRequest) throws EmailAlreadyExistsException {
         MessageResponse response = authService.registerUser(signupRequest);
         return ResponseEntity.ok(response);
     }
@@ -45,9 +49,15 @@ public class AuthController {
      */
     @PostMapping("/login")
     public ResponseEntity<JwtResponse> authenticateUser(
-            @Valid @RequestBody LoginRequest loginRequest) {
+            @Valid @RequestBody LoginRequest loginRequest) throws UserNotFoundException, InvalidPasswordException {
         JwtResponse jwtResponse = authService.authenticateUser(loginRequest);
         return ResponseEntity.ok(jwtResponse);
+    }
+
+    @PostMapping("/check-email")
+    public ResponseEntity<?> checkEmail(@Valid @RequestBody CheckEmailRequest checkEmailRequest) {
+        authService.checkEmailExists(checkEmailRequest.getEmail());
+        return ResponseEntity.ok().build();
     }
 
     /**

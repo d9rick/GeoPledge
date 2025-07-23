@@ -4,7 +4,7 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from "react-native";
 
 const API_BASE_URL = Platform.select({
-    ios: 'http://10.21.175.179:8080',
+    ios: 'http://192.168.12.234:8080',
     android: 'http://10.21.175.179:8080',
     web: 'http://localhost:8080'
 });

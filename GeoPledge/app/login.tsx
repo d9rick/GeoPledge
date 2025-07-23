@@ -9,13 +9,14 @@ import {
     ActivityIndicator,
     Alert,
     Animated,
+    Keyboard,
     KeyboardAvoidingView,
     Platform,
-    ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
+    TouchableWithoutFeedback,
     View,
 } from 'react-native';
 
@@ -58,10 +59,6 @@ export default function LoginScreen() {
     const [networkError, setNetworkError] = useState<NetworkError | null>(null);
     const [showPassword, setShowPassword] = useState(false);
     
-    // Focus state for better UX
-    const [emailFocused, setEmailFocused] = useState(false);
-    const [passwordFocused, setPasswordFocused] = useState(false);
-
     // Add to component state
     const [shakeAnimation] = useState(new Animated.Value(0));
 
@@ -96,10 +93,6 @@ export default function LoginScreen() {
             return 'Please enter a valid email address';
         }
         
-        if (email.length > 254) {
-            return 'Email is too long';
-        }
-        
         return undefined;
     };
 
@@ -112,42 +105,22 @@ export default function LoginScreen() {
             return 'Password must be at least 6 characters';
         }
         
-        if (password.length > 128) {
-            return 'Password is too long';
-        }
-        
         return undefined;
     };
 
     // Announce error to screen readers
     const announceError = (message: string) => {
-        if (Platform.OS === 'ios') {
+        if (Platform.OS !== 'web') {
             AccessibilityInfo.announceForAccessibility(message);
         }
     };
 
     const triggerShake = () => {
         Animated.sequence([
-            Animated.timing(shakeAnimation, {
-                toValue: 10,
-                duration: 100,
-                useNativeDriver: true,
-            }),
-            Animated.timing(shakeAnimation, {
-                toValue: -10,
-                duration: 100,
-                useNativeDriver: true,
-            }),
-            Animated.timing(shakeAnimation, {
-                toValue: 10,
-                duration: 100,
-                useNativeDriver: true,
-            }),
-            Animated.timing(shakeAnimation, {
-                toValue: 0,
-                duration: 100,
-                useNativeDriver: true,
-            }),
+            Animated.timing(shakeAnimation, { toValue: 10, duration: 100, useNativeDriver: true }),
+            Animated.timing(shakeAnimation, { toValue: -10, duration: 100, useNativeDriver: true }),
+            Animated.timing(shakeAnimation, { toValue: 10, duration: 100, useNativeDriver: true }),
+            Animated.timing(shakeAnimation, { toValue: 0, duration: 100, useNativeDriver: true }),
         ]).start();
     };
 
@@ -155,7 +128,6 @@ export default function LoginScreen() {
         setValidationErrors({});
         setNetworkError(null);
 
-        // Validate inputs
         const emailError = validateEmail(email);
         const passwordError = validatePassword(password);
 
@@ -164,7 +136,8 @@ export default function LoginScreen() {
             if (emailError) errors.email = emailError;
             if (passwordError) errors.password = passwordError;
             setValidationErrors(errors);
-            announceError(emailError || passwordError);
+            announceError(emailError || passwordError || 'Please correct the errors.');
+            triggerShake();
             return;
         }
 
@@ -174,367 +147,238 @@ export default function LoginScreen() {
             await signIn(email.trim(), password);
             router.replace('/pledges');
         } catch (err: any) {
-            console.log('handleLogin error:', err);
-            console.log('error.response:', err.response);
-            console.log('error.status:', err.status);
-            console.log('error.data:', err.data);
             const categorizedError = categorizeError(err, 'login');
             setNetworkError(categorizedError);
             announceError(categorizedError.message);
+            triggerShake();
 
-            // Show alert for authentication errors
-            if (categorizedError.type === 'authentication') {
+            if (categorizedError.type === 'authentication' || categorizedError.type === 'server' || categorizedError.type === 'network') {
                 Alert.alert(
-                    'Login Failed',
+                    categorizedError.type.charAt(0).toUpperCase() + categorizedError.type.slice(1) + ' Error',
                     categorizedError.message,
-                    [{ text: 'OK', style: 'default' }]
-                );
-                triggerShake();
-            }
-            // Show alert for network/server errors
-            else if (categorizedError.type === 'server' || categorizedError.type === 'network') {
-                Alert.alert(
-                    'Connection Error',
-                    categorizedError.message,
-                    [
-                        { text: 'OK', style: 'default' },
-                        ...(categorizedError.retryable ? [{ text: 'Retry', onPress: handleLogin }] : [])
-                    ]
+                    [{ text: 'OK' }]
                 );
             }
-
-            throw err;
         } finally {
             setIsSubmitting(false);
         }
     };
-
-    const handleRetry = () => {
-        if (networkError?.retryable) {
-            handleLogin();
-        }
-    };
-
-    const getInputStyle = (field: 'email' | 'password', focused: boolean) => {
-        const hasError = validationErrors[field];
-        
-        return {
-            ...styles.input,
-            ...(hasError && styles.inputError),
-            ...(focused && !hasError && styles.inputFocused),
-        };
-    };
-
+    
     return (
         <KeyboardAvoidingView
             style={styles.container}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-            <ScrollView 
-                contentContainerStyle={styles.scrollContainer}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-            >
-                <Animated.View 
-                    style={[
-                        styles.formContainer,
-                        { transform: [{ translateX: shakeAnimation }] }
-                    ]}
-                >
-                    <View style={styles.form}>
-                        <Text style={styles.title}>Welcome Back</Text>
-                        <Text style={styles.subtitle}>Sign in to continue with your pledges</Text>
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <View style={styles.innerContainer}>
+                    <Animated.View style={[styles.card, { transform: [{ translateX: shakeAnimation }] }]}>
+                        <Text style={styles.title}>Log In</Text>
 
-                        {/* Email Field */}
-                        <Text style={styles.label}>Email</Text>
-                        <View style={styles.inputContainer}>
+                        {/* Email Input */}
+                        <View style={styles.inputWrapper}>
                             <TextInput
-                                style={getInputStyle('email', emailFocused)}
-                                placeholder="you@example.com"
-                                placeholderTextColor="#999"
+                                style={[styles.input, validationErrors.email ? styles.inputError : null]}
+                                placeholder="Email / Username"
+                                placeholderTextColor="#555"
                                 keyboardType="email-address"
                                 autoCapitalize="none"
-                                autoCorrect={false}
-                                autoComplete="email"
                                 value={email}
                                 onChangeText={setEmail}
-                                onFocus={() => setEmailFocused(true)}
-                                onBlur={() => setEmailFocused(false)}
                                 editable={!isSubmitting}
-                                accessibilityLabel="Email input field"
-                                accessibilityHint="Enter your email address"
-                                accessibilityRole="text"
                             />
-                            {validationErrors.email && (
-                                <MaterialIcons name="error" size={20} color="#DC3545" style={styles.errorIcon} />
-                            )}
+                            {validationErrors.email && <Text style={styles.errorText}>{validationErrors.email}</Text>}
                         </View>
-                        {validationErrors.email && (
-                            <Text style={styles.errorText} accessibilityRole="alert">
-                                {validationErrors.email}
-                            </Text>
-                        )}
 
-                        {/* Password Field */}
-                        <Text style={styles.label}>Password</Text>
-                        <View style={styles.inputContainer}>
-                            <TextInput
-                                style={[getInputStyle('password', passwordFocused), styles.passwordInput]}
-                                placeholder="Enter your password"
-                                placeholderTextColor="#999"
-                                secureTextEntry={!showPassword}
-                                autoCapitalize="none"
-                                autoCorrect={false}
-                                autoComplete="password"
-                                value={password}
-                                onChangeText={setPassword}
-                                onFocus={() => setPasswordFocused(true)}
-                                onBlur={() => setPasswordFocused(false)}
-                                editable={!isSubmitting}
-                                accessibilityLabel="Password input field"
-                                accessibilityHint="Enter your password"
-                                accessibilityRole="text"
-                            />
-                            <TouchableOpacity
-                                style={styles.eyeIcon}
-                                onPress={() => setShowPassword(!showPassword)}
-                                disabled={isSubmitting}
-                                accessibilityLabel={showPassword ? "Hide password" : "Show password"}
-                                accessibilityRole="button"
-                            >
-                                <MaterialIcons 
-                                    name={showPassword ? "visibility" : "visibility-off"} 
-                                    size={20} 
-                                    color="#666" 
+                        {/* Password Input */}
+                        <View style={styles.inputWrapper}>
+                             <View style={[styles.input, styles.passwordContainer, validationErrors.password ? styles.inputError : null]}>
+                                <TextInput
+                                    style={styles.passwordInput}
+                                    placeholder="Password"
+                                    placeholderTextColor="#555"
+                                    secureTextEntry={!showPassword}
+                                    autoCapitalize="none"
+                                    value={password}
+                                    onChangeText={setPassword}
+                                    editable={!isSubmitting}
                                 />
-                            </TouchableOpacity>
-                            {validationErrors.password && (
-                                <MaterialIcons name="error" size={20} color="#DC3545" style={styles.errorIcon} />
-                            )}
-                        </View>
-                        {validationErrors.password && (
-                            <Text style={styles.errorText} accessibilityRole="alert">
-                                {validationErrors.password}
-                            </Text>
-                        )}
-
-                        {/* Network Error Display */}
-                        {networkError && (
-                            <View style={styles.networkErrorContainer}>
-                                <MaterialIcons 
-                                    name={networkError.type === "network" ? "wifi-off" : "error"} 
-                                    size={20} 
-                                    color="#DC3545" 
-                                />
-                                <Text style={styles.networkErrorText} accessibilityRole="alert">
-                                    {networkError.message}
-                                </Text>
-                                {networkError.retryable && (
-                                    <TouchableOpacity
-                                        style={styles.retryButton}
-                                        onPress={handleRetry}
-                                        disabled={isSubmitting}
-                                        accessibilityLabel="Retry login"
-                                        accessibilityRole="button"
-                                    >
-                                        <Text style={styles.retryButtonText}>Retry</Text>
-                                    </TouchableOpacity>
-                                )}
+                                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+                                    <MaterialIcons name={showPassword ? "visibility" : "visibility-off"} size={20} color="#555" />
+                                </TouchableOpacity>
                             </View>
-                        )}
+                            {validationErrors.password && <Text style={styles.errorText}>{validationErrors.password}</Text>}
+                        </View>
+                        
+                        {/* Forgot Password */}
+                        <TouchableOpacity style={styles.forgotPasswordContainer}>
+                            <Text style={styles.forgotPasswordText}>forgot password?</Text>
+                        </TouchableOpacity>
 
                         {/* Login Button */}
                         <TouchableOpacity
-                            style={[
-                                styles.loginButton,
-                                isSubmitting && styles.loginButtonDisabled
-                            ]}
+                            style={[styles.button, isSubmitting ? styles.buttonDisabled : null]}
                             onPress={handleLogin}
                             disabled={isSubmitting}
-                            accessibilityLabel="Login button"
-                            accessibilityRole="button"
-                            accessibilityState={{ disabled: isSubmitting }}
                         >
                             {isSubmitting ? (
-                                <View style={styles.loadingContainer}>
-                                    <ActivityIndicator size="small" color="#fff" />
-                                    <Text style={styles.loginButtonText}>Logging in...</Text>
-                                </View>
+                                <ActivityIndicator size="small" color="#fff" />
                             ) : (
-                                <Text style={styles.loginButtonText}>Log In</Text>
+                                <Text style={styles.buttonText}>Login</Text>
                             )}
                         </TouchableOpacity>
+                        
+                         {/* General Error Display */}
+                        {networkError && (
+                            <View style={styles.networkErrorContainer}>
+                                <Text style={styles.networkErrorText}>{networkError.message}</Text>
+                            </View>
+                        )}
 
-                        {/* Footer */}
-                        <View style={styles.footer}>
+                        {/* Sign Up Link */}
+                         <View style={styles.footer}>
                             <Text style={styles.footerText}>Don't have an account? </Text>
                             <TouchableOpacity
                                 onPress={() => router.push('/signup')}
                                 disabled={isSubmitting}
-                                accessibilityLabel="Navigate to sign up page"
-                                accessibilityRole="button"
                             >
                                 <Text style={styles.link}>Sign Up</Text>
                             </TouchableOpacity>
                         </View>
-                    </View>
-                </Animated.View>
-            </ScrollView>
+
+                    </Animated.View>
+                </View>
+            </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { 
-        flex: 1, 
-        backgroundColor: '#f8f9fa'
+    container: {
+        flex: 1,
+        backgroundColor: '#fff', // Or a background color that fits the theme
     },
-    scrollContainer: {
-        flexGrow: 1,
+    innerContainer: {
+        flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingVertical: 20,
+        padding: 20,
     },
-    formContainer: {
-        width: '90%',
-        maxWidth: 400,
-        backgroundColor: '#fff',
-        padding: 24,
-        borderRadius: 12,
-        elevation: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
+    card: {
+        width: 322,
+        height: 'auto',
+        backgroundColor: '#fe7743',
+        borderRadius: 20,
+        borderWidth: 0.5,
+        borderColor: '#000',
+        paddingVertical: 30,
+        paddingHorizontal: 33,
+        alignItems: 'center',
     },
-    title: { 
-        fontSize: 28, 
-        fontWeight: '700', 
-        marginBottom: 8, 
-        textAlign: 'center',
-        color: '#1a1a1a'
-    },
-    subtitle: {
+    title: {
+        fontFamily: 'SpaceMono-Regular',
         fontSize: 16,
-        color: '#666',
-        textAlign: 'center',
-        marginBottom: 32,
+        color: '#000',
+        marginBottom: 33,
     },
-    label: { 
-        marginTop: 16, 
-        fontWeight: '600', 
-        color: '#333',
-        fontSize: 16,
-    },
-    inputContainer: {
-        position: 'relative',
-        marginTop: 8,
+    inputWrapper: {
+        width: '100%',
+        marginBottom: 20,
     },
     input: {
-        borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 8,
-        padding: 16,
-        fontSize: 16,
-        backgroundColor: '#fff',
-        color: '#333',
-    },
-    passwordInput: {
-        paddingRight: 50, // Space for eye icon
-    },
-    inputFocused: {
-        borderColor: '#007AFF',
-        borderWidth: 2,
+        width: '100%',
+        height: 39,
+        backgroundColor: '#d9d9d9',
+        borderRadius: 20,
+        borderWidth: 0.5,
+        borderColor: '#000',
+        paddingLeft: 26,
+        fontFamily: 'SpaceMono-Regular',
+        fontSize: 12,
+        color: '#000',
     },
     inputError: {
-        borderColor: '#DC3545',
-        borderWidth: 2,
+        borderColor: '#ff0000',
+        borderWidth: 1,
+    },
+    passwordContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingLeft: 0, // Remove padding to use TextInput's padding
+    },
+    passwordInput: {
+        flex: 1,
+        height: '100%',
+        paddingLeft: 26,
+        fontFamily: 'SpaceMono-Regular',
+        fontSize: 12,
+        color: '#000',
     },
     eyeIcon: {
-        position: 'absolute',
-        right: 12,
-        top: 16,
-        padding: 4,
-    },
-    errorIcon: {
-        position: 'absolute',
-        right: 12,
-        top: 16,
+        padding: 8,
+        marginRight: 8,
     },
     errorText: {
-        color: '#DC3545',
-        fontSize: 14,
-        marginTop: 4,
-        marginLeft: 4,
+        color: 'white',
+        fontFamily: 'SpaceMono-Regular',
+        fontSize: 12,
+        marginTop: 5,
+        textAlign: 'center',
+    },
+    forgotPasswordContainer: {
+        marginBottom: 18,
+    },
+    forgotPasswordText: {
+        fontFamily: 'SpaceMono-Regular',
+        fontSize: 12,
+        color: '#000',
+        textDecorationLine: 'underline',
+    },
+    button: {
+        width: '100%',
+        height: 39,
+        backgroundColor: '#447d9b',
+        borderRadius: 20,
+        borderWidth: 0.5,
+        borderColor: '#000',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    buttonDisabled: {
+        opacity: 0.7,
+    },
+    buttonText: {
+        fontFamily: 'SpaceMono-Regular',
+        fontSize: 12,
+        color: '#fff',
     },
     networkErrorContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#F8D7DA',
-        borderColor: '#F5C6CB',
-        borderWidth: 1,
-        borderRadius: 8,
-        padding: 12,
-        marginTop: 16,
-        flexWrap: 'wrap',
+        marginTop: 15,
+        padding: 10,
+        backgroundColor: 'rgba(255, 0, 0, 0.2)',
+        borderRadius: 10,
     },
     networkErrorText: {
-        color: '#721C24',
-        fontSize: 14,
-        flex: 1,
-        marginLeft: 8,
-    },
-    retryButton: {
-        backgroundColor: '#DC3545',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 6,
-        marginLeft: 8,
-    },
-    retryButtonText: {
         color: 'white',
+        fontFamily: 'SpaceMono-Regular',
         fontSize: 12,
-        fontWeight: '600',
+        textAlign: 'center',
     },
-    loginButton: {
-        backgroundColor: '#007AFF',
-        marginTop: 24,
-        paddingVertical: 16,
-        borderRadius: 8,
-        alignItems: 'center',
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.2,
-        shadowRadius: 2,
-    },
-    loginButtonDisabled: {
-        opacity: 0.6,
-    },
-    loadingContainer: {
+    footer: {
         flexDirection: 'row',
-        alignItems: 'center',
+        marginTop: 20,
         justifyContent: 'center',
-    },
-    loginButtonText: {
-        color: 'white',
-        fontWeight: '600',
-        fontSize: 16,
-        marginLeft: 8,
-    },
-    footer: { 
-        flexDirection: 'row', 
-        justifyContent: 'center', 
-        marginTop: 24,
-        flexWrap: 'wrap',
+        alignItems: 'center',
     },
     footerText: {
-        color: '#666',
-        fontSize: 16,
+        fontFamily: 'SpaceMono-Regular',
+        fontSize: 12,
+        color: '#000',
     },
-    link: { 
-        color: '#007AFF', 
-        fontWeight: '600',
-        fontSize: 16,
+    link: {
+        fontFamily: 'SpaceMono-Regular',
+        fontSize: 12,
+        color: '#000',
+        textDecorationLine: 'underline',
+        fontWeight: 'bold',
     },
 });

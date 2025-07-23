@@ -1,8 +1,8 @@
 // /app/_layout.tsx
-import React from 'react';
-import { View, ActivityIndicator } from 'react-native';
-import { Stack } from 'expo-router';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { Stack } from 'expo-router';
+import React from 'react';
+import { ActivityIndicator, View } from 'react-native';
 
 function AppStack() {
     const { userToken, isLoading } = useAuth();
@@ -47,6 +47,13 @@ function AppStack() {
                 options={{
                     headerShown: true,
                     title: 'Pick a Location',
+                }}
+            />
+            <Stack.Screen
+                name="admin"
+                options={{
+                    headerShown: true,
+                    title: 'Admin',
                 }}
             />
 

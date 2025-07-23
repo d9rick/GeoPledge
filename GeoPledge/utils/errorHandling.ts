@@ -74,7 +74,7 @@ export const validateConfirmPassword = (confirmPassword: string, password: strin
 };
 
 // Network error categorization
-export const categorizeError = (error: any, context: 'login' | 'signup' = 'login'): NetworkError => {
+export const categorizeError = (error: any, context: 'login' | 'signup' | 'check-email' = 'login'): NetworkError => {
     console.log('Error details:', {
         status: error.response?.status,
         data: error.response?.data,
@@ -177,19 +177,19 @@ export const ERROR_MESSAGES = {
 } as const;
 
 // Helper function to get user-friendly error messages
-export const getUserFriendlyMessage = (error: any, context: 'login' | 'signup' = 'login'): string => {
+export const getUserFriendlyMessage = (error: any, context: 'login' | 'signup' | 'check-email' = 'login'): string => {
     const categorizedError = categorizeError(error, context);
     return categorizedError.message;
 };
 
 // Helper function to check if error is retryable
-export const isErrorRetryable = (error: any, context: 'login' | 'signup' = 'login'): boolean => {
+export const isErrorRetryable = (error: any, context: 'login' | 'signup' | 'check-email' = 'login'): boolean => {
     const categorizedError = categorizeError(error, context);
     return categorizedError.retryable;
 };
 
 // Helper function to get error type
-export const getErrorType = (error: any, context: 'login' | 'signup' = 'login'): ErrorType => {
+export const getErrorType = (error: any, context: 'login' | 'signup' | 'check-email' = 'login'): ErrorType => {
     const categorizedError = categorizeError(error, context);
     return categorizedError.type;
 };
@@ -218,6 +218,7 @@ export class RetryManager {
     }
 }
 
+/*
 export const trackError = (error: any, context: string) => {
     const errorData = {
         type: getErrorType(error),
@@ -231,3 +232,4 @@ export const trackError = (error: any, context: string) => {
     // Send to analytics service
     analytics.track('error_occurred', errorData);
 }; 
+*/ 

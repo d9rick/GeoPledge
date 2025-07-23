@@ -39,7 +39,7 @@ public class AuthServiceImpl implements AuthService {
      */
     @Override
     @Transactional
-    public MessageResponse registerUser(SignupRequest signupRequest) {
+    public MessageResponse registerUser(SignupRequest signupRequest) throws EmailAlreadyExistsException {
         String email = signupRequest.getEmail().toLowerCase().trim();
         if (userRepository.existsByEmail(email)) {
             throw new EmailAlreadyExistsException();
@@ -59,7 +59,7 @@ public class AuthServiceImpl implements AuthService {
      */
     @Override
     @Transactional(readOnly = true)
-    public JwtResponse authenticateUser(LoginRequest loginRequest) {
+    public JwtResponse authenticateUser(LoginRequest loginRequest) throws UserNotFoundException, InvalidPasswordException {
         String email = loginRequest.getEmail().toLowerCase().trim();
         String rawPassword = loginRequest.getPassword();
 
@@ -86,5 +86,12 @@ public class AuthServiceImpl implements AuthService {
     public MessageResponse logoutUser(String token) {
         // If you want to blacklist tokens, add `token` to a persistent store here.
         return new MessageResponse("Logged out successfully!");
+    }
+
+    @Override
+    public void checkEmailExists(String email) throws EmailAlreadyExistsException {
+        if (userRepository.existsByEmail(email.toLowerCase().trim())) {
+            throw new EmailAlreadyExistsException("Email is already in use.");
+        }
     }
 }
